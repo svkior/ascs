@@ -1,0 +1,12 @@
+> Aug 17, 2014 at 9:14pm (MSK) : *** 0 : {%!s(int=1) %!s(int=16384) lo0  up|loopback|multicast}
+Aug 17, 2014 at 9:14pm (MSK) : *** 1 : {%!s(int=2) %!s(int=1280) gif0  pointtopoint|multicast}
+Aug 17, 2014 at 9:14pm (MSK) : *** 2 : {%!s(int=3) %!s(int=1280) stf0  0}
+Aug 17, 2014 at 9:14pm (MSK) : *** 3 : {%!s(int=4) %!s(int=1500) en0 5c:f9:38:8c:d7:e0 up|broadcast|multicast}
+Aug 17, 2014 at 9:14pm (MSK) : *** 4 : {%!s(int=5) %!s(int=1500) en1 32:00:16:50:40:00 up|broadcast|multicast}
+Aug 17, 2014 at 9:14pm (MSK) : *** 5 : {%!s(int=6) %!s(int=2304) p2p0 0e:f9:38:8c:d7:e0 up|broadcast|multicast}
+Aug 17, 2014 at 9:14pm (MSK) : *** 6 : {%!s(int=7) %!s(int=1452) awdl0 4a:30:d5:87:f5:3e up|broadcast|multicast}
+Aug 17, 2014 at 9:14pm (MSK) : *** 7 : {%!s(int=8) %!s(int=1500) bridge0 5e:f9:38:c8:9d:00 up|broadcast|multicast}
+Aug 17, 2014 at 9:14pm (MSK) : *** 8 : {%!s(int=9) %!s(int=1500) vnic0 00:1c:42:00:00:08 up|broadcast|multicast}
+Aug 17, 2014 at 9:14pm (MSK) : *** 9 : {%!s(int=10) %!s(int=1500) vnic1 00:1c:42:00:00:09 up|broadcast|multicast}
+Aug 17, 2014 at 9:14pm (MSK) : The address is: 192.168.97.102
+Aug 17, 2014 at 9:14pm (MSK) : The broadcast address is: 192.168.97.255
