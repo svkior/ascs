@@ -1,7 +1,7 @@
 {
 	"Interface" : "en0",
-	"LongName"  : "TTS Switcher 24x5kW",
-	"ShortName" : "TTS Sw 24x5",
+	"LongName"  : "TTS Switcher 24x5kW Mac OS X Emulator",
+	"ShortName" : "TTS Sw 24x5 OSXE ",
 	"ESTAString": "0x29E8",
 	"OEMString"	: "0x00ff",
     "Controller": false,
