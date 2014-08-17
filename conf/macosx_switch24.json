@@ -2,7 +2,9 @@
 	"Interface" : "en0",
 	"LongName"  : "TTS Switcher 24x5kW",
 	"ShortName" : "TTS Sw 24x5",
-    "Users": ["UserA","UserB"],
-    "Groups": ["GroupA"],
-    "Controller": false
+	"OEMString"	: "0x00ff",
+    "Controller": false,
+
+    "Users"     : ["UserA","UserB"],
+    "Groups"    : ["GroupA"]
 }

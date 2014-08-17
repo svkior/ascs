@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"strconv"
 	"time"
 )
 
@@ -13,6 +14,7 @@ type Artnet struct {
 	broadcast net.IP
 	localIp   net.IP
 	macAddr   net.HardwareAddr
+	OEM       uint16
 	conf      *cfread.CFReader
 	conn      *net.UDPConn
 }
@@ -32,7 +34,6 @@ func (a *Artnet) Setup(conf *cfread.CFReader) error {
 
 	iface, err := net.InterfaceByName(a.conf.Interface)
 	if err != nil {
-		a.Logf("Error get interface by name: %s", err.Error())
 		return err
 	}
 	//a.Logf("Got Interface: %s", iface)
@@ -43,7 +44,6 @@ func (a *Artnet) Setup(conf *cfread.CFReader) error {
 
 	iAddrs, err := iface.Addrs()
 	if err != nil {
-		a.Logf("Error get interface addresses: %s", err.Error())
 		return err
 	}
 
@@ -64,6 +64,14 @@ func (a *Artnet) Setup(conf *cfread.CFReader) error {
 				a.Logf("Network :  %s", network.String())
 				a.Logf("Mask:      %s", mask.String())
 				a.Logf("Broadcast: %s", a.broadcast.String())
+
+				oem, err := strconv.ParseUint(a.conf.OEMString, 0, 16)
+				if err != nil {
+					return err
+				}
+				a.OEM = uint16(oem)
+				a.Logf("OEM Number: %d", a.OEM)
+
 				return nil
 			}
 		}
@@ -95,7 +103,7 @@ func (a *Artnet) Connect() {
 }
 
 func (a *Artnet) Pooler() {
-	ticker := time.NewTicker(time.Second * 5)
+	ticker := time.NewTicker(time.Second * 8)
 	go func() {
 		for _ = range ticker.C {
 			a.SendArtPoll()
@@ -273,32 +281,32 @@ func (a *Artnet) SendArtPollReply(addr *net.UDPAddr) {
 	// idAddress := a.localIP
 	// port
 
-	buf[0] = byte('A')           // A
-	buf[1] = byte('r')           // r
-	buf[2] = byte('t')           // t
-	buf[3] = byte('-')           // -
-	buf[4] = byte('N')           // N
-	buf[5] = byte('e')           // e
-	buf[6] = byte('t')           // t
-	buf[7] = 0                   // 0x00
-	buf[8] = byte(OpCode & 0xff) // OpCode[0]
-	buf[9] = byte(OpCode >> 8)   // OpCode[1]
-	buf[10] = a.localIp[0]       // IPV4 [0]
-	buf[11] = a.localIp[1]       // IPV4 [1]
-	buf[12] = a.localIp[2]       // IPV4 [2]
-	buf[13] = a.localIp[3]       // IPV4 [3]
-	buf[14] = 0x36               // IP Port Low
-	buf[15] = 0x19               // IP Port Hi
-	buf[16] = 0x00               // High byte of Version
-	buf[17] = 0x00               // Low byte of Version
-	buf[18] = 0x00               // NetSwitch
-	buf[19] = 0x00               // Net Sub Switch
-	buf[20] = 0x04               // OEMHi
-	buf[21] = 0x30               // OEMLow
-	buf[22] = 0x00               // Ubea Version
-	buf[23] = 0x00               // Status1
-	buf[24] = byte('p')          // ESTA LO
-	buf[25] = byte('z')          // ESTA HI
+	buf[0] = byte('A')                           // A
+	buf[1] = byte('r')                           // r
+	buf[2] = byte('t')                           // t
+	buf[3] = byte('-')                           // -
+	buf[4] = byte('N')                           // N
+	buf[5] = byte('e')                           // e
+	buf[6] = byte('t')                           // t
+	buf[7] = 0                                   // 0x00
+	buf[8] = byte(OpCode & 0xff)                 // OpCode[0]
+	buf[9] = byte(OpCode >> 8)                   // OpCode[1]
+	buf[10] = a.localIp[0]                       // IPV4 [0]
+	buf[11] = a.localIp[1]                       // IPV4 [1]
+	buf[12] = a.localIp[2]                       // IPV4 [2]
+	buf[13] = a.localIp[3]                       // IPV4 [3]
+	buf[14] = 0x36                               // IP Port Low
+	buf[15] = 0x19                               // IP Port Hi
+	buf[16] = byte((a.conf.ProgVers >> 8) & 255) // High byte of Version
+	buf[17] = byte(a.conf.ProgVers & 255)        // Low byte of Version
+	buf[18] = 0x00                               // NetSwitch
+	buf[19] = 0x00                               // Net Sub Switch
+	buf[20] = byte((a.OEM >> 8) & 255)           // OEMHi
+	buf[21] = byte(a.OEM & 255)                  // OEMLow
+	buf[22] = 0x00                               // Ubea Version
+	buf[23] = 0x00                               // Status1
+	buf[24] = byte('p')                          // ESTA LO
+	buf[25] = byte('z')                          // ESTA HI
 
 	for i, c := range a.conf.ShortName {
 		if i < 16 {
