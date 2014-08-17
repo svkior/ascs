@@ -307,83 +307,61 @@ func (a *Artnet) SendArtPollReply(addr *net.UDPAddr) {
 			break
 		}
 	}
-	/*
-		buf[26] = byte('A') // Short Name 0
-		buf[27] = byte('A') // Short Name 1
-		buf[28] = byte('A') // Short Name 2
-		buf[29] = byte('A') // Short Name 3
-		buf[30] = byte('A') // Short Name 4
-		buf[31] = byte('A') // Short Name 5
-		buf[32] = byte('A') // Short Name 6
-		buf[33] = byte('A') // Short Name 7
-		buf[34] = byte('A') // Short Name 8
-		buf[35] = byte('A') // Short Name 9
-		buf[36] = byte('A') // Short Name 10
-		buf[37] = byte('A') // Short Name 11
-		buf[38] = byte('A') // Short Name 12
-		buf[39] = byte('A') // Short Name 13
-		buf[40] = byte('A') // Short Name 14
-		buf[41] = byte('A') // Short Name 15
-		buf[42] = byte('A') // Short Name 16
-	*/
-	buf[43] = 0 // Short Name END MUST BE 0
-	longName := []byte(a.conf.LongName)
-	for i, s := range longName {
+	for i, c := range a.conf.LongName {
 		if i < 63 {
-			buf[44+i] = s
+			buf[44+i] = byte(c)
 		} else {
 			break
 		}
 	}
-	//buf[44 : 44+64] = LongName // Long Name 0
-	// 44 + 64 =
 	NodeReport := []byte("Node Report")
 	for i, s := range NodeReport {
 		buf[108+i] = s
 	}
 	// 108 + 64
 	//buf[108 : 108+64] = NodeReport
-	buf[172] = 0    // NumPorts Hi
-	buf[173] = 0    // NumPorts Lo
-	buf[174] = 0    // Port 0 Type
-	buf[175] = 0    // Port 1 Type
-	buf[176] = 0    // Port 2 Type
-	buf[177] = 0    // Port 3 Type
-	buf[178] = 0    // GoodInput 0
-	buf[179] = 0    // GoodInput 1
-	buf[180] = 0    // GoodInput 2
-	buf[181] = 0    // GoodInput 3
-	buf[182] = 0    // GoodOutput 0
-	buf[183] = 0    // GoodOutput 1
-	buf[184] = 0    // GoodOutput 2
-	buf[185] = 0    // GoodOutput 3
-	buf[186] = 0    // SwIn 0
-	buf[187] = 0    // SwIn 1
-	buf[188] = 0    // SwIn 2
-	buf[189] = 0    // SwIn 3
-	buf[190] = 0    // SwOut 0
-	buf[191] = 0    // SwOut 1
-	buf[192] = 0    // SwOut 2
-	buf[193] = 0    // SwOut 3
-	buf[194] = 0    // SwVideo
-	buf[195] = 0    // SwMacro
-	buf[196] = 0    // SwRemote
-	buf[197] = 0    // Spare
-	buf[198] = 0    // Spare
-	buf[199] = 0    // Spare
-	buf[200] = 0    // Style
-	buf[201] = 0xff // MAC HI
-	buf[202] = 0xff // MAC
-	buf[203] = 0xff // MAC
-	buf[204] = 0xff // MAC
-	buf[205] = 0xff // MAC
-	buf[206] = 0xff // MAC LO
-	buf[207] = 0x0  // BIND IP 0
-	buf[208] = 0x0  // BIND IP 1
-	buf[209] = 0x0  // BIND IP 2
-	buf[210] = 0x0  // BIND IP 3
-	buf[211] = 0    // BInd Index
-	buf[212] = 0    // Status2
+	buf[172] = 0 // NumPorts Hi
+	buf[173] = 0 // NumPorts Lo
+	buf[174] = 0 // Port 0 Type
+	buf[175] = 0 // Port 1 Type
+	buf[176] = 0 // Port 2 Type
+	buf[177] = 0 // Port 3 Type
+	buf[178] = 0 // GoodInput 0
+	buf[179] = 0 // GoodInput 1
+	buf[180] = 0 // GoodInput 2
+	buf[181] = 0 // GoodInput 3
+	buf[182] = 0 // GoodOutput 0
+	buf[183] = 0 // GoodOutput 1
+	buf[184] = 0 // GoodOutput 2
+	buf[185] = 0 // GoodOutput 3
+	buf[186] = 0 // SwIn 0
+	buf[187] = 0 // SwIn 1
+	buf[188] = 0 // SwIn 2
+	buf[189] = 0 // SwIn 3
+	buf[190] = 0 // SwOut 0
+	buf[191] = 0 // SwOut 1
+	buf[192] = 0 // SwOut 2
+	buf[193] = 0 // SwOut 3
+	buf[194] = 0 // SwVideo
+	buf[195] = 0 // SwMacro
+	buf[196] = 0 // SwRemote
+	buf[197] = 0 // Spare
+	buf[198] = 0 // Spare
+	buf[199] = 0 // Spare
+	buf[200] = 0 // Style
+	// MAC ADDRESS
+	buf[201] = a.macAddr[0] // MAC HI
+	buf[202] = a.macAddr[1] // MAC
+	buf[203] = a.macAddr[2] // MAC
+	buf[204] = a.macAddr[3] // MAC
+	buf[205] = a.macAddr[4] // MAC
+	buf[206] = a.macAddr[5] // MAC LO
+	buf[207] = 0x0          // BIND IP 0
+	buf[208] = 0x0          // BIND IP 1
+	buf[209] = 0x0          // BIND IP 2
+	buf[210] = 0x0          // BIND IP 3
+	buf[211] = 0            // BInd Index
+	buf[212] = 0            // Status2
 	// 212 + 26 = 238
 	bufLen := 238
 
