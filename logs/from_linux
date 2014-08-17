@@ -1,0 +1,4 @@
+Aug 17, 2014 at 9:15pm (MSK) : *** 0 : {%!s(int=1) %!s(int=16436) lo  up|loopback}
+> Aug 17, 2014 at 9:15pm (MSK) : *** 1 : {%!s(int=2) %!s(int=1500) eth0 00:1c:42:22:1d:65 up|broadcast|multicast}
+Aug 17, 2014 at 9:15pm (MSK) : The address is: 192.168.97.102
+Aug 17, 2014 at 9:15pm (MSK) : The broadcast address is: 192.168.97.255
