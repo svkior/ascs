@@ -13,7 +13,7 @@ import (
 func logger(queue chan string) {
 	for {
 		str := <-queue
-		print("\r")
+		fmt.Fprintf(os.Stdout, "\r")
 		const layout = "Jan 2, 2006 at 3:04pm (MST)"
 		strSplits := strings.Split(str, "\n")
 		var firstTime bool = true
@@ -23,7 +23,7 @@ func logger(queue chan string) {
 					firstTime = false
 					s = time.Now().Format(layout) + " : " + s
 				}
-				println(s)
+				fmt.Fprintf(os.Stdout, "%s\n", s)
 			}
 		}
 	}
