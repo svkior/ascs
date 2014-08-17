@@ -16,8 +16,7 @@ func main() {
 	gui.RunGui(&chLog)
 	an := artnet.Artnet{}
 	an.Setup(&chLog)
-	an.Connect("192.168.97.100")
-	an.SendArtPoll()
-
+	go an.Connect("192.168.97.100")
+	
 	gui.Wait()
 }
