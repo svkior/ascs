@@ -1,0 +1,5 @@
+{
+	"interface" : "en0",
+    "Users": ["UserA","UserB"],
+    "Groups": ["GroupA"]
+}

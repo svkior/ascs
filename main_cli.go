@@ -2,8 +2,10 @@ package main
 
 import (
 	"./artnet"
-	"./cmdinterface"
+	"./cfread"
+	//	"./cmdinterface"
 	"bufio"
+	"flag"
 	"fmt"
 	"os"
 	"strings"
@@ -47,15 +49,20 @@ func cli() {
 	}
 }
 
+var configName string
+
 func runApp() {
 
-	chLog := cmdinterface.CmdIface{}
-	chLog.Init()
+	flag.StringVar(&configName, "conf", "", "Config.json")
+	flag.StringVar(&configName, "c", "", "Config.json (short version)")
+	flag.Parse()
+	conf := cfread.ParseConfig(configName)
+	conf.Status()
 
-	go logger(chLog.Queue)
+	go logger(conf.ChLog.Queue)
 	go cli()
 	an := artnet.Artnet{}
-	an.Setup(&chLog)
+	an.Setup(&conf)
 	an.Connect("192.168.97.102")
 }
 

@@ -1,6 +1,7 @@
 package artnet
 
 import (
+	"../cfread"
 	"../cmdinterface"
 	"fmt"
 	"net"
@@ -15,18 +16,30 @@ type Artnet struct {
 	conn      *net.UDPConn
 }
 
-func (a *Artnet) Setup(cIf *cmdinterface.CmdIface) {
-	a.universe = 0x1
-	a.cif = cIf
+func (a *Artnet) Setup(conf *cfread.CFReader) {
 
-	interfaces, err := net.Interfaces()
-	if err != nil {
-		a.cif.Log(fmt.Sprintf("Error: %s", err.Error()))
-		return
-	}
-	for n, i := range interfaces {
-		a.cif.Log(fmt.Sprintf("*** %d : %s", n, i))
-	}
+	a.universe = 0x1
+	a.cif = &conf.ChLog
+	/*
+
+		interfaces, err := net.Interfaces()
+		if err != nil {
+			a.cif.Log(fmt.Sprintf("Error: %s", err.Error()))
+			return
+		}
+		adresses, err := net.InterfaceAddrs()
+		if err != nil {
+			a.cif.Log(fmt.Sprintf("Error: %s", err.Error()))
+			return
+		}
+
+		for n, i := range interfaces {
+			a.cif.Log(fmt.Sprintf("*** %d : %s", n, i))
+			if n < len(adresses) {
+				a.cif.Log(fmt.Sprintf("*** %d : %s", n, adresses[n]))
+			}
+		}
+	*/
 
 }
 
