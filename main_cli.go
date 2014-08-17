@@ -13,21 +13,11 @@ import (
 func logger(queue chan string) {
 	for {
 		str := <-queue
-		log.Println(str)
+		println(str)
 	}
 }
 
-func runApp() {
-
-	chLog := cmdinterface.CmdIface{}
-	chLog.Init()
-	an := artnet.Artnet{}
-	an.Setup(&chLog)
-	an.Connect("192.168.97.104")
-	an.SendArtPoll()
-
-	go logger(chLog.Queue)
-
+func cli() {
 	reader := bufio.NewReader(os.Stdin)
 
 	for {
@@ -35,7 +25,18 @@ func runApp() {
 		command, _ := reader.ReadString('\n')
 		fmt.Println(command)
 	}
+}
 
+func runApp() {
+
+	chLog := cmdinterface.CmdIface{}
+	chLog.Init()
+
+	go logger(chLog.Queue)
+	go cli()
+	an := artnet.Artnet{}
+	an.Setup(&chLog)
+	an.Connect("192.168.97.102")
 }
 
 func main() {

@@ -53,8 +53,8 @@ func (a *Artnet) Connect(ipAddr string) {
 		return
 	}
 
-	go a.ListenArtnet()
 	go a.Pooler()
+	a.ListenArtnet()
 
 }
 
