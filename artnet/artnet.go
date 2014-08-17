@@ -9,12 +9,108 @@ import (
 	"time"
 )
 
+type Status1 struct {
+	UBEA      bool // true if Present
+	RDM       bool // true if RDM
+	BootROM   bool // true if booted from ROM
+	PortAddr  byte //  Port Address "unknown" 00 - unknown, "front" 01 - set from front panel, "net" 10 - programmed from network, "unused" 11 - not used
+	Indicator byte // "unknown" 00- no indicators, "locate" 01- locatemode, "mute" 10- mute mode, "normal" 11- normal mode
+}
+
+func CreateStatus1() Status1 {
+	var s Status1
+	s.UBEA = false
+	s.RDM = false
+	s.BootROM = false
+	s.PortAddr = 3
+	s.Indicator = 3
+	return s
+}
+
+func (s *Status1) SetPortAddr(v string) {
+	switch v {
+	case "unknown":
+		s.PortAddr = 0
+	case "front":
+		s.PortAddr = 1
+	case "net":
+		s.PortAddr = 2
+	case "unused":
+		s.PortAddr = 3
+	}
+}
+
+func (s *Status1) SetIndicator(v string) {
+	switch v {
+	case "unknown":
+		s.Indicator = 0
+	case "locate":
+		s.Indicator = 1
+	case "mute":
+		s.Indicator = 2
+	case "normal":
+		s.Indicator = 3
+	}
+}
+
+func (s *Status1) GetStatus1() byte {
+	var rv byte
+	if s.UBEA {
+		rv |= 1
+	}
+	if s.RDM {
+		rv |= 2
+	}
+	if s.BootROM {
+		rv |= 4
+	}
+	rv |= s.PortAddr << 4
+	rv |= s.Indicator << 6
+	return rv
+}
+
+type Status2 struct {
+	hasWeb      bool
+	ipDhcp      bool
+	dhcpCapable bool
+}
+
+func CreateStatus2() Status2 {
+	var s Status2
+	s.hasWeb = true
+	s.ipDhcp = false
+	s.dhcpCapable = true
+	return s
+}
+
+func (s *Status2) GetStatus2() byte {
+	var status2 byte
+	if s.hasWeb {
+		status2 |= 1
+	}
+	if s.ipDhcp {
+		status2 |= 2
+	}
+	if s.dhcpCapable {
+		status2 |= 4
+	}
+	status2 |= 8 // ArtNet3
+	return status2
+}
+
+func (s *Status2) DHCP(flag bool) {
+	s.ipDhcp = flag
+}
+
 type Artnet struct {
 	universe  uint16
 	broadcast net.IP
 	localIp   net.IP
 	macAddr   net.HardwareAddr
 	OEM       uint16
+	ESTA      uint16
+	Stat1     Status1
+	Stat2     Status2
 	conf      *cfread.CFReader
 	conn      *net.UDPConn
 }
@@ -72,6 +168,23 @@ func (a *Artnet) Setup(conf *cfread.CFReader) error {
 				a.OEM = uint16(oem)
 				a.Logf("OEM Number: %d", a.OEM)
 
+				esta, err := strconv.ParseUint(a.conf.ESTAString, 0, 16)
+				if err != nil {
+					return err
+				}
+				a.ESTA = uint16(esta)
+				a.Logf("ESTA Number: %d", a.ESTA)
+
+				a.Stat1 = CreateStatus1()
+				a.Stat1.UBEA = a.conf.UBEA
+				a.Stat1.RDM = a.conf.RDM
+				a.Stat1.BootROM = a.conf.BootROM
+				a.Stat1.SetPortAddr(a.conf.PortAddr)
+				a.Stat1.SetIndicator(a.conf.Indicator)
+
+				a.Stat2 = CreateStatus2()
+				a.Stat2.DHCP(a.conf.DHCP)
+
 				return nil
 			}
 		}
@@ -119,7 +232,8 @@ func (a *Artnet) ParsePacket(buf [1024]byte, addr *net.UDPAddr, n int) {
 		a.Logf("Id: %s", id)
 		return
 	}
-	OpCode := uint(buf[8]) + uint(buf[9])*256
+	var OpCode uint
+	OpCode = uint(buf[8]) + uint(buf[9])*256
 	//a.Logf("Opcode: 0x%04x", OpCode))
 	switch OpCode {
 	case 0x2000:
@@ -271,42 +385,50 @@ func (a *Artnet) SendArtPoll() {
 
 }
 
+func getLow(word uint16) byte {
+	return byte(word & 255)
+}
+
+func getHi(word uint16) byte {
+	return byte((word >> 8) & 255)
+}
+
 func (a *Artnet) SendArtPollReply(addr *net.UDPAddr) {
 
 	//a.Logf("Fake SendArtPollReply: %s", addr.String()))
 	var buf [512]byte
 
-	OpCode := 0x2100
+	OpCode := uint16(0x2100)
 
 	// idAddress := a.localIP
 	// port
 
-	buf[0] = byte('A')                           // A
-	buf[1] = byte('r')                           // r
-	buf[2] = byte('t')                           // t
-	buf[3] = byte('-')                           // -
-	buf[4] = byte('N')                           // N
-	buf[5] = byte('e')                           // e
-	buf[6] = byte('t')                           // t
-	buf[7] = 0                                   // 0x00
-	buf[8] = byte(OpCode & 0xff)                 // OpCode[0]
-	buf[9] = byte(OpCode >> 8)                   // OpCode[1]
-	buf[10] = a.localIp[0]                       // IPV4 [0]
-	buf[11] = a.localIp[1]                       // IPV4 [1]
-	buf[12] = a.localIp[2]                       // IPV4 [2]
-	buf[13] = a.localIp[3]                       // IPV4 [3]
-	buf[14] = 0x36                               // IP Port Low
-	buf[15] = 0x19                               // IP Port Hi
-	buf[16] = byte((a.conf.ProgVers >> 8) & 255) // High byte of Version
-	buf[17] = byte(a.conf.ProgVers & 255)        // Low byte of Version
-	buf[18] = 0x00                               // NetSwitch
-	buf[19] = 0x00                               // Net Sub Switch
-	buf[20] = byte((a.OEM >> 8) & 255)           // OEMHi
-	buf[21] = byte(a.OEM & 255)                  // OEMLow
-	buf[22] = 0x00                               // Ubea Version
-	buf[23] = 0x00                               // Status1
-	buf[24] = byte('p')                          // ESTA LO
-	buf[25] = byte('z')                          // ESTA HI
+	buf[0] = byte('A')                // A
+	buf[1] = byte('r')                // r
+	buf[2] = byte('t')                // t
+	buf[3] = byte('-')                // -
+	buf[4] = byte('N')                // N
+	buf[5] = byte('e')                // e
+	buf[6] = byte('t')                // t
+	buf[7] = 0                        // 0x00
+	buf[8] = getLow(OpCode)           // OpCode[0]
+	buf[9] = getHi(OpCode)            // OpCode[1]
+	buf[10] = a.localIp[0]            // IPV4 [0]
+	buf[11] = a.localIp[1]            // IPV4 [1]
+	buf[12] = a.localIp[2]            // IPV4 [2]
+	buf[13] = a.localIp[3]            // IPV4 [3]
+	buf[14] = 0x36                    // IP Port Low
+	buf[15] = 0x19                    // IP Port Hi
+	buf[16] = getHi(a.conf.ProgVers)  // High byte of Version
+	buf[17] = getLow(a.conf.ProgVers) // Low byte of Version
+	buf[18] = 0x00                    // NetSwitch
+	buf[19] = 0x00                    // Net Sub Switch
+	buf[20] = getHi(a.OEM)            // OEMHi
+	buf[21] = getLow(a.OEM)           // OEMLow
+	buf[22] = a.conf.UBEAVer          // Ubea Version
+	buf[23] = a.Stat1.GetStatus1()    // Status1
+	buf[24] = getLow(a.ESTA)          // ESTA LO
+	buf[25] = getHi(a.ESTA)           // ESTA HI
 
 	for i, c := range a.conf.ShortName {
 		if i < 16 {
@@ -364,12 +486,14 @@ func (a *Artnet) SendArtPollReply(addr *net.UDPAddr) {
 	buf[204] = a.macAddr[3] // MAC
 	buf[205] = a.macAddr[4] // MAC
 	buf[206] = a.macAddr[5] // MAC LO
-	buf[207] = 0x0          // BIND IP 0
-	buf[208] = 0x0          // BIND IP 1
-	buf[209] = 0x0          // BIND IP 2
-	buf[210] = 0x0          // BIND IP 3
+
+	buf[207] = a.localIp[0] // BIND IP 0
+	buf[208] = a.localIp[1] // BIND IP 1
+	buf[209] = a.localIp[2] // BIND IP 2
+	buf[210] = a.localIp[3] // BIND IP 3
 	buf[211] = 0            // BInd Index
-	buf[212] = 0            // Status2
+
+	buf[212] = a.Stat2.GetStatus2() // Status2
 	// 212 + 26 = 238
 	bufLen := 238
 

@@ -8,15 +8,29 @@ import (
 )
 
 type CFReader struct {
-	Interface  string   // Interface for ArtNet
-	LongName   string   // Long name of Device
-	ShortName  string   // Short name of Device
-	OEMString  string   // OEM Number (Manufacturer)
-	Users      []string // STUB
-	Groups     []string // STUB
+	Interface  string // Interface for ArtNet
+	LongName   string // Long name of Device
+	ShortName  string // Short name of Device
+	OEMString  string // OEM Number
+	ESTAString string // Manufacturer code
+	// Status 2
+	DHCP bool // true if DHCP capable
+
+	// Status 1
+	UBEA      bool   // true if Present
+	RDM       bool   // true if RDM
+	BootROM   bool   // true if booted from ROM
+	PortAddr  string //  Port Address "unknown" - unknown, "front" - set from front panel, "net" - programmed from network, "unused" - not used
+	Indicator string // "unknown" - no indicators, "locate" - locatemode, "mute" - mute mode, "normal" - normal mode
+
+	UBEAVer byte // Версия UBEA
+
 	Controller bool
 	ChLog      cmdinterface.CmdIface
 	ProgVers   uint16
+
+	Users  []string // STUB
+	Groups []string // STUB
 }
 
 func (c *CFReader) Status() {
