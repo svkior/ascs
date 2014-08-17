@@ -48,16 +48,16 @@ Rectangle {
 		model: logs.len
 		delegate: Row {
 			id: row1
-			height: 30
+			height: 20
 			Rectangle { 
 				id: boxrect
-				width: 40; height: 20; color: logs.color(index); radius: 20
+				width: 40; height: 16; color: logs.color(index); radius: 20
 				Text {
 					anchors.centerIn: parent
 					text: index
 				}
 			}
-			Rectangle { width: 20; height:40; color: "black"}
+			Rectangle { width: 20; height:20; color: "black"}
 			Text {
 				text: logs.record(index)
 				color: logs.color(index)

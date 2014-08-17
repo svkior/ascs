@@ -24,6 +24,11 @@ func (l *Logs) Add(r LogRecord) {
 	l.list = append(l.list, r)
 	l.Len = len(l.list)
 	qml.Changed(l, &l.Len)
+	if l.Len > 100 {
+		l.list = l.list[1:]
+		l.Len = len(l.list)
+		qml.Changed(l, &l.Len)
+	}
 }
 
 func (l *Logs) Type(index int) string {
