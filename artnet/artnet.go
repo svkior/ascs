@@ -103,16 +103,61 @@ func (s *Status2) DHCP(flag bool) {
 }
 
 type Artnet struct {
-	universe  uint16
-	broadcast net.IP
-	localIp   net.IP
-	macAddr   net.HardwareAddr
-	OEM       uint16
-	ESTA      uint16
-	Stat1     Status1
-	Stat2     Status2
-	conf      *cfread.CFReader
-	conn      *net.UDPConn
+	universe    uint16
+	broadcast   net.IP
+	localIp     net.IP
+	macAddr     net.HardwareAddr
+	OEM         uint16
+	ESTA        uint16
+	Stat1       Status1
+	Stat2       Status2
+	conf        *cfread.CFReader
+	conn        *net.UDPConn
+	PoolCounter uint16
+	StatusCode  uint16
+	StatusMsg   string
+}
+
+func (a *Artnet) SetStatus(stat string) {
+	switch stat {
+	case "RcDebug":
+		a.StatusCode = 0x0000
+	case "RcPowerOk":
+		a.StatusCode = 0x0001
+	case "RcPowerFail":
+		a.StatusCode = 0x0002
+	case "RcSocketWr1":
+		a.StatusCode = 0x0003
+	case "RcParseFail":
+		a.StatusCode = 0x0004
+	case "RcUdpFail":
+		a.StatusCode = 0x0005
+	case "RcShNameOk":
+		a.StatusCode = 0x0006
+	case "RcLoNameOk":
+		a.StatusCode = 0x0007
+	case "RcDmxError":
+		a.StatusCode = 0x0008
+	case "RcDmxUdpFull":
+		a.StatusCode = 0x0009
+	case "RcDmxRxFull":
+		a.StatusCode = 0x000a
+	case "RcSwitchErr":
+		a.StatusCode = 0x000b
+	case "RcConfigErr":
+		a.StatusCode = 0x000c
+	case "RcDmxShort":
+		a.StatusCode = 0x000d
+	case "RcFirmwareFail":
+		a.StatusCode = 0x000e
+	case "RcUserFail":
+		a.StatusCode = 0x000f
+	}
+}
+
+func (a *Artnet) GetNodeReport() string {
+	a.PoolCounter++
+	return fmt.Sprintf("#%04x [%05d] %s", a.StatusCode, a.PoolCounter, a.StatusMsg)
 }
 
 func (a *Artnet) Logf(format string, i ...interface{}) {
@@ -185,6 +230,9 @@ func (a *Artnet) Setup(conf *cfread.CFReader) error {
 				a.Stat2 = CreateStatus2()
 				a.Stat2.DHCP(a.conf.DHCP)
 
+				a.SetStatus("RcPowerOk")
+				a.StatusMsg = "Everything is OK"
+
 				return nil
 			}
 		}
@@ -237,7 +285,7 @@ func (a *Artnet) ParsePacket(buf [1024]byte, addr *net.UDPAddr, n int) {
 	//a.Logf("Opcode: 0x%04x", OpCode))
 	switch OpCode {
 	case 0x2000:
-		a.Log("ArpPoolRequest: IN Progress")
+		a.Log("ArtPoolRequest: IN Progress")
 		protVer := uint(buf[10])*256 + uint(buf[11])
 		if protVer < 14 {
 			a.Logf("ProtVer: %d is lower than", protVer)
@@ -245,7 +293,7 @@ func (a *Artnet) ParsePacket(buf [1024]byte, addr *net.UDPAddr, n int) {
 		}
 		a.SendArtPollReply(addr)
 	case 0x2100:
-		a.Log("ArpPoolReply: NOT REALIZED")
+		a.Log("ArtPoolReply: NOT REALIZED")
 	case 0x2300:
 		a.Log("OpDiagData: NOT REALIZED")
 	case 0x2400:
@@ -444,9 +492,11 @@ func (a *Artnet) SendArtPollReply(addr *net.UDPAddr) {
 			break
 		}
 	}
-	NodeReport := []byte("Node Report")
+	NodeReport := a.GetNodeReport()
 	for i, s := range NodeReport {
-		buf[108+i] = s
+		if i < 63 {
+			buf[108+i] = byte(s)
+		}
 	}
 	// 108 + 64
 	//buf[108 : 108+64] = NodeReport
