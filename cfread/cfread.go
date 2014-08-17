@@ -10,6 +10,7 @@ import (
 type CFReader struct {
 	Interface  string   // Interface for ArtNet
 	LongName   string   // Long name of Device
+	ShortName  string   // Short name of Device
 	Users      []string // STUB
 	Groups     []string // STUB
 	Controller bool

@@ -299,27 +299,41 @@ func (a *Artnet) SendArtPollReply(addr *net.UDPAddr) {
 	buf[23] = 0x00               // Status1
 	buf[24] = byte('p')          // ESTA LO
 	buf[25] = byte('z')          // ESTA HI
-	buf[26] = byte('A')          // Short Name 0
-	buf[27] = byte('A')          // Short Name 1
-	buf[28] = byte('A')          // Short Name 2
-	buf[29] = byte('A')          // Short Name 3
-	buf[30] = byte('A')          // Short Name 4
-	buf[31] = byte('A')          // Short Name 5
-	buf[32] = byte('A')          // Short Name 6
-	buf[33] = byte('A')          // Short Name 7
-	buf[34] = byte('A')          // Short Name 8
-	buf[35] = byte('A')          // Short Name 9
-	buf[36] = byte('A')          // Short Name 10
-	buf[37] = byte('A')          // Short Name 11
-	buf[38] = byte('A')          // Short Name 12
-	buf[39] = byte('A')          // Short Name 13
-	buf[40] = byte('A')          // Short Name 14
-	buf[41] = byte('A')          // Short Name 15
-	buf[42] = byte('A')          // Short Name 16
-	buf[43] = 0                  // Short Name END MUST BE 0
-	LongName := []byte(a.conf.LongName)
-	for i, s := range LongName {
-		buf[44+i] = s
+
+	for i, c := range a.conf.ShortName {
+		if i < 16 {
+			buf[26+i] = byte(c)
+		} else {
+			break
+		}
+	}
+	/*
+		buf[26] = byte('A') // Short Name 0
+		buf[27] = byte('A') // Short Name 1
+		buf[28] = byte('A') // Short Name 2
+		buf[29] = byte('A') // Short Name 3
+		buf[30] = byte('A') // Short Name 4
+		buf[31] = byte('A') // Short Name 5
+		buf[32] = byte('A') // Short Name 6
+		buf[33] = byte('A') // Short Name 7
+		buf[34] = byte('A') // Short Name 8
+		buf[35] = byte('A') // Short Name 9
+		buf[36] = byte('A') // Short Name 10
+		buf[37] = byte('A') // Short Name 11
+		buf[38] = byte('A') // Short Name 12
+		buf[39] = byte('A') // Short Name 13
+		buf[40] = byte('A') // Short Name 14
+		buf[41] = byte('A') // Short Name 15
+		buf[42] = byte('A') // Short Name 16
+	*/
+	buf[43] = 0 // Short Name END MUST BE 0
+	longName := []byte(a.conf.LongName)
+	for i, s := range longName {
+		if i < 63 {
+			buf[44+i] = s
+		} else {
+			break
+		}
 	}
 	//buf[44 : 44+64] = LongName // Long Name 0
 	// 44 + 64 =
