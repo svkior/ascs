@@ -18,6 +18,16 @@ type Artnet struct {
 func (a *Artnet) Setup(cIf *cmdinterface.CmdIface) {
 	a.universe = 0x1
 	a.cif = cIf
+
+	interfaces, err := net.Interfaces()
+	if err != nil {
+		a.cif.Log(fmt.Sprintf("Error: %s", err.Error()))
+		return
+	}
+	for n, i := range interfaces {
+		a.cif.Log(fmt.Sprintf("*** %d : %s", n, i))
+	}
+
 }
 
 func (a *Artnet) Connect(ipAddr string) {
