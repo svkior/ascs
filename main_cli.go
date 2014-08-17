@@ -5,15 +5,27 @@ import (
 	"./cmdinterface"
 	"bufio"
 	"fmt"
-	//	"github.com/codegangsta/cli"
-	"log"
 	"os"
+	"strings"
+	"time"
 )
 
 func logger(queue chan string) {
 	for {
 		str := <-queue
-		println(str)
+		print("\r")
+		const layout = "Jan 2, 2006 at 3:04pm (MST)"
+		strSplits := strings.Split(str, "\n")
+		var firstTime bool = true
+		for _, s := range strSplits {
+			if len(s) > 0 {
+				if firstTime {
+					firstTime = false
+					s = time.Now().Format(layout) + " : " + s
+				}
+				println(s)
+			}
+		}
 	}
 }
 
@@ -23,7 +35,15 @@ func cli() {
 	for {
 		fmt.Print("> ")
 		command, _ := reader.ReadString('\n')
-		fmt.Println(command)
+		if len(command) > 1 {
+			switch command {
+			case "quit\n":
+				println("Quit.")
+				os.Exit(0)
+			default:
+				fmt.Print("Unknown command: " + command)
+			}
+		}
 	}
 }
 

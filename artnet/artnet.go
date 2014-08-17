@@ -26,7 +26,7 @@ func (a *Artnet) Connect(ipAddr string) {
 		a.cif.Log(fmt.Sprintln("Invalid Address: %s", ipAddr))
 		return
 	}
-	a.cif.Log(fmt.Sprintf("The address is: %s\n", addr.String()))
+	a.cif.Log(fmt.Sprintf("The address is: %s", addr.String()))
 	a.localIp = addr
 
 	mask := addr.DefaultMask()
@@ -39,7 +39,7 @@ func (a *Artnet) Connect(ipAddr string) {
 		network[3]|^mask[3],
 	)
 
-	a.cif.Log(fmt.Sprintf("The broadcast address is: %s\n", a.broadcast.String()))
+	a.cif.Log(fmt.Sprintf("The broadcast address is: %s", a.broadcast.String()))
 	service := ":6454"
 	udpAddr, err := net.ResolveUDPAddr("udp4", service)
 	if err != nil {
