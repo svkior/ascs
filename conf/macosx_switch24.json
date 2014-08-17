@@ -1,5 +1,7 @@
 {
-	"interface" : "en0",
+	"Interface" : "en0",
+	"LongName"  : "TTS Switcher 24x5kW",
     "Users": ["UserA","UserB"],
-    "Groups": ["GroupA"]
+    "Groups": ["GroupA"],
+    "Controller": false
 }

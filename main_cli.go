@@ -16,7 +16,7 @@ func logger(queue chan string) {
 	for {
 		str := <-queue
 		fmt.Fprintf(os.Stdout, "\r")
-		const layout = "Jan 2, 2006 at 3:04pm (MST)"
+		const layout = "Jan 2, 2006 at 3:04:05pm (MST)"
 		strSplits := strings.Split(str, "\n")
 		var firstTime bool = true
 		for _, s := range strSplits {
@@ -62,8 +62,12 @@ func runApp() {
 	go logger(conf.ChLog.Queue)
 	go cli()
 	an := artnet.Artnet{}
-	an.Setup(&conf)
-	an.Connect("192.168.97.102")
+	err := an.Setup(&conf)
+	if err == nil {
+		an.Connect()
+	} else {
+		conf.ChLog.Log(fmt.Sprintf("Error setup ArtNet: %s", err.Error()))
+	}
 }
 
 func main() {

@@ -8,10 +8,12 @@ import (
 )
 
 type CFReader struct {
-	Interface string   // Interface for ArtNet
-	Users     []string // STUB
-	Groups    []string // STUB
-	ChLog     cmdinterface.CmdIface
+	Interface  string   // Interface for ArtNet
+	LongName   string   // Long name of Device
+	Users      []string // STUB
+	Groups     []string // STUB
+	Controller bool
+	ChLog      cmdinterface.CmdIface
 }
 
 func (c *CFReader) Status() {
@@ -21,6 +23,7 @@ func (c *CFReader) Status() {
 func ParseConfig(fname string) CFReader {
 	cfr := CFReader{}
 	cfr.Interface = "eth0" // Default config for linux
+	cfr.LongName = "Default TTS Device"
 	cfr.ChLog.Init()
 
 	if len(fname) < 1 {

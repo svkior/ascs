@@ -2,7 +2,7 @@ package artnet
 
 import (
 	"../cfread"
-	"../cmdinterface"
+	"errors"
 	"fmt"
 	"net"
 	"time"
@@ -12,71 +12,84 @@ type Artnet struct {
 	universe  uint16
 	broadcast net.IP
 	localIp   net.IP
-	cif       *cmdinterface.CmdIface
+	macAddr   net.HardwareAddr
+	conf      *cfread.CFReader
 	conn      *net.UDPConn
 }
 
-func (a *Artnet) Setup(conf *cfread.CFReader) {
-
-	a.universe = 0x1
-	a.cif = &conf.ChLog
-	/*
-
-		interfaces, err := net.Interfaces()
-		if err != nil {
-			a.cif.Log(fmt.Sprintf("Error: %s", err.Error()))
-			return
-		}
-		adresses, err := net.InterfaceAddrs()
-		if err != nil {
-			a.cif.Log(fmt.Sprintf("Error: %s", err.Error()))
-			return
-		}
-
-		for n, i := range interfaces {
-			a.cif.Log(fmt.Sprintf("*** %d : %s", n, i))
-			if n < len(adresses) {
-				a.cif.Log(fmt.Sprintf("*** %d : %s", n, adresses[n]))
-			}
-		}
-	*/
-
+func (a *Artnet) Logf(format string, i ...interface{}) {
+	a.conf.ChLog.Log(fmt.Sprintf(format, i))
 }
 
-func (a *Artnet) Connect(ipAddr string) {
-	addr := net.ParseIP(ipAddr)
-	if addr == nil {
-		a.cif.Log(fmt.Sprintln("Invalid Address: %s", ipAddr))
-		return
+func (a *Artnet) Log(i ...interface{}) {
+	a.conf.ChLog.Log(fmt.Sprint(i))
+}
+
+func (a *Artnet) Setup(conf *cfread.CFReader) error {
+
+	a.universe = 0x1
+	a.conf = conf
+
+	iface, err := net.InterfaceByName(a.conf.Interface)
+	if err != nil {
+		a.Logf("Error get interface by name: %s", err.Error())
+		return err
 	}
-	a.cif.Log(fmt.Sprintf("The address is: %s", addr.String()))
-	a.localIp = addr
+	//a.Logf("Got Interface: %s", iface)
 
-	mask := addr.DefaultMask()
-	network := addr.Mask(mask)
+	// Got MAC Address
+	a.macAddr = iface.HardwareAddr
+	a.Logf("Got Interface with MAC: %s", a.macAddr.String())
 
-	a.broadcast = net.IPv4(
-		network[0]|^mask[0],
-		network[1]|^mask[1],
-		network[2]|^mask[2],
-		network[3]|^mask[3],
-	)
+	iAddrs, err := iface.Addrs()
+	if err != nil {
+		a.Logf("Error get interface addresses: %s", err.Error())
+		return err
+	}
 
-	a.cif.Log(fmt.Sprintf("The broadcast address is: %s", a.broadcast.String()))
+	for _, addr := range iAddrs {
+		ip, ipNet, err := net.ParseCIDR(addr.String())
+		if err == nil {
+			if ip.To4() != nil {
+				mask := ipNet.Mask
+				network := ip.Mask(mask)
+				a.localIp = ip
+				a.broadcast = net.IPv4(
+					network[0]|^mask[0],
+					network[1]|^mask[1],
+					network[2]|^mask[2],
+					network[3]|^mask[3],
+				)
+				a.Logf("Addr :     %s", ip.String())
+				a.Logf("Network :  %s", network.String())
+				a.Logf("Mask:      %s", mask.String())
+				a.Logf("Broadcast: %s", a.broadcast.String())
+				return nil
+			}
+		}
+	}
+
+	return errors.New("Can`t find IPv4 Address")
+}
+
+func (a *Artnet) Connect() {
+	a.Logf("The broadcast address is: %s", a.broadcast.String())
 	service := ":6454"
 	udpAddr, err := net.ResolveUDPAddr("udp4", service)
 	if err != nil {
-		a.cif.Log(fmt.Sprintf("Error Resovle : %s", err.Error()))
+		a.Logf("Error Resovle : %s", err.Error())
 		return
 	}
 
 	a.conn, err = net.ListenUDP("udp", udpAddr)
 	if err != nil {
-		a.cif.Log(fmt.Sprintf("Error Listen on : %s", err.Error()))
+		a.Logf("Error Listen on : %s", err.Error())
 		return
 	}
 
-	go a.Pooler()
+	if a.conf.Controller {
+		go a.Pooler()
+	}
 	a.ListenArtnet()
 
 }
@@ -91,90 +104,90 @@ func (a *Artnet) Pooler() {
 }
 
 func (a *Artnet) ParsePacket(buf [1024]byte, addr *net.UDPAddr, n int) {
-	//a.cif.Log(fmt.Sprintf("Read ArtNet: %d bytes", n))
+	//a.Logf("Read ArtNet: %d bytes", n))
 
 	id := string(buf[0:8])
 	if (id[0] != 'A') || (id[1] != 'r') {
-		a.cif.Log(fmt.Sprintf("Id: %s", id))
+		a.Logf("Id: %s", id)
 		return
 	}
 	OpCode := uint(buf[8]) + uint(buf[9])*256
-	//a.cif.Log(fmt.Sprintf("Opcode: 0x%04x", OpCode))
+	//a.Logf("Opcode: 0x%04x", OpCode))
 	switch OpCode {
 	case 0x2000:
-		a.cif.Log("ArpPoolRequest: IN Progress")
+		a.Log("ArpPoolRequest: IN Progress")
 		protVer := uint(buf[10])*256 + uint(buf[11])
 		if protVer < 14 {
-			a.cif.Log(fmt.Sprintf("ProtVer: %d is lower than", protVer))
+			a.Logf("ProtVer: %d is lower than", protVer)
 			return
 		}
 		a.SendArtPollReply(addr)
 	case 0x2100:
-		a.cif.Log("ArpPoolReply: NOT REALIZED")
+		a.Log("ArpPoolReply: NOT REALIZED")
 	case 0x2300:
-		a.cif.Log("OpDiagData: NOT REALIZED")
+		a.Log("OpDiagData: NOT REALIZED")
 	case 0x2400:
-		a.cif.Log("OpCommand: NOT REALIZED")
+		a.Log("OpCommand: NOT REALIZED")
 	case 0x5000:
-		a.cif.Log("OpOutput/OpDmx: NOT REALIZED")
+		a.Log("OpOutput/OpDmx: NOT REALIZED")
 	case 0x5100:
-		a.cif.Log("OpNzs: NOT REALIZED")
+		a.Log("OpNzs: NOT REALIZED")
 	case 0x6000:
-		a.cif.Log("OpAddress: NOT REALIZED")
+		a.Log("OpAddress: NOT REALIZED")
 	case 0x7000:
-		a.cif.Log("OpInput: NOT REALIZED")
+		a.Log("OpInput: NOT REALIZED")
 	case 0x8000:
-		a.cif.Log("OpTodRequest: NOT REALIZED")
+		a.Log("OpTodRequest: NOT REALIZED")
 	case 0x8100:
-		a.cif.Log("OpTodData: NOT REALIZED")
+		a.Log("OpTodData: NOT REALIZED")
 	case 0x8200:
-		a.cif.Log("OpTodControl: NOT REALIZED")
+		a.Log("OpTodControl: NOT REALIZED")
 	case 0x8300:
-		a.cif.Log("OpRdm: NOT REALIZED")
+		a.Log("OpRdm: NOT REALIZED")
 	case 0x8400:
-		a.cif.Log("OpRdmSub: NOT REALIZED")
+		a.Log("OpRdmSub: NOT REALIZED")
 	case 0xa010:
-		a.cif.Log("OpVideoSetup: NOT REALIZED")
+		a.Log("OpVideoSetup: NOT REALIZED")
 	case 0xa020:
-		a.cif.Log("OpVideoPalette: NOT REALIZED")
+		a.Log("OpVideoPalette: NOT REALIZED")
 	case 0xa040:
-		a.cif.Log("OpVideoData: NOT REALIZED")
+		a.Log("OpVideoData: NOT REALIZED")
 	case 0xf000:
-		a.cif.Log("OpMacMaster: NOT REALIZED")
+		a.Log("OpMacMaster: NOT REALIZED")
 	case 0xf100:
-		a.cif.Log("OpMacSlave: NOT REALIZED")
+		a.Log("OpMacSlave: NOT REALIZED")
 	case 0xf200:
-		a.cif.Log("OpFirmwareMaster: NOT REALIZED")
+		a.Log("OpFirmwareMaster: NOT REALIZED")
 	case 0xf300:
-		a.cif.Log("OpFirmwareReply: NOT REALIZED")
+		a.Log("OpFirmwareReply: NOT REALIZED")
 	case 0xf400:
-		a.cif.Log("OpFileTnMaster: NOT REALIZED")
+		a.Log("OpFileTnMaster: NOT REALIZED")
 	case 0xf500:
-		a.cif.Log("OpFileFnMaster: NOT REALIZED")
+		a.Log("OpFileFnMaster: NOT REALIZED")
 	case 0xf600:
-		a.cif.Log("OpFileFnReply: NOT REALIZED")
+		a.Log("OpFileFnReply: NOT REALIZED")
 	case 0xf800:
-		a.cif.Log("OpIpProg: NOT REALIZED")
+		a.Log("OpIpProg: NOT REALIZED")
 	case 0xf900:
-		a.cif.Log("OpIpProgReply: NOT REALIZED")
+		a.Log("OpIpProgReply: NOT REALIZED")
 	case 0x9000:
-		a.cif.Log("OpMedia: NOT REALIZED")
+		a.Log("OpMedia: NOT REALIZED")
 	case 0x9100:
-		a.cif.Log("OpMediaPatch: NOT REALIZED")
+		a.Log("OpMediaPatch: NOT REALIZED")
 	case 0x9200:
-		a.cif.Log("OpMediaControl: NOT REALIZED")
+		a.Log("OpMediaControl: NOT REALIZED")
 	case 0x9300:
-		a.cif.Log("OpMediaControlReply: NOT REALIZED")
+		a.Log("OpMediaControlReply: NOT REALIZED")
 	case 0x9700:
-		a.cif.Log("OpTimeCode: NOT REALIZED")
+		a.Log("OpTimeCode: NOT REALIZED")
 	case 0x9800:
-		a.cif.Log("OpTimeSync: NOT REALIZED")
+		a.Log("OpTimeSync: NOT REALIZED")
 	case 0x9900:
-		a.cif.Log("OpTrigger: NOT REALIZED")
+		a.Log("OpTrigger: NOT REALIZED")
 	case 0x9a00:
-		a.cif.Log("OpDirectory: NOT REALIZED")
+		a.Log("OpDirectory: NOT REALIZED")
 	case 0x9b00:
-		a.cif.Log("OpDirectoryReply: NOT REALIZED")
+		a.Log("OpDirectoryReply: NOT REALIZED")
 	}
 
 }
@@ -185,10 +198,10 @@ func (a *Artnet) ListenArtnet() {
 		var buf [1024]byte
 		n, addr, err := a.conn.ReadFromUDP(buf[0:])
 		if err != nil {
-			a.cif.Log(fmt.Sprintf("Error Read From UDP: %s", err.Error()))
+			a.Logf("Error Read From UDP: %s", err.Error())
 			return
 		}
-		//a.cif.Log(fmt.Sprintf("Read ArtNet from %s : %d bytes", addr.String(), n))
+		//a.Logf("Read ArtNet from %s : %d bytes", addr.String(), n))
 		a.ParsePacket(buf, addr, n)
 	}
 }
@@ -198,13 +211,13 @@ func (a *Artnet) SendPacket(buf [512]byte, Len int) {
 	service := a.broadcast.String() + ":6454"
 	udpAddr, err := net.ResolveUDPAddr("udp4", service)
 	if err != nil {
-		a.cif.Log(fmt.Sprintf("Error in resolve broadcast: %s", err.Error()))
+		a.Logf("Error in resolve broadcast: %s", err.Error())
 		return
 	}
 
 	_, err = a.conn.WriteToUDP(buf[0:Len], udpAddr)
 	if err != nil {
-		a.cif.Log(fmt.Sprintf("Error Write to UDP: %s", err.Error()))
+		a.Logf("Error Write to UDP: %s", err.Error())
 		return
 	}
 	/*
@@ -252,7 +265,7 @@ func (a *Artnet) SendArtPoll() {
 
 func (a *Artnet) SendArtPollReply(addr *net.UDPAddr) {
 
-	//a.cif.Log(fmt.Sprintf("Fake SendArtPollReply: %s", addr.String()))
+	//a.Logf("Fake SendArtPollReply: %s", addr.String()))
 	var buf [512]byte
 
 	OpCode := 0x2100
@@ -304,7 +317,7 @@ func (a *Artnet) SendArtPollReply(addr *net.UDPAddr) {
 	buf[41] = byte('A')          // Short Name 15
 	buf[42] = byte('A')          // Short Name 16
 	buf[43] = 0                  // Short Name END MUST BE 0
-	LongName := []byte("Long Name")
+	LongName := []byte(a.conf.LongName)
 	for i, s := range LongName {
 		buf[44+i] = s
 	}
