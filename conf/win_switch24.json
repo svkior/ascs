@@ -1,0 +1,19 @@
+{
+	"Interface" : "auto",
+	"LongName"  : "TTS Switcher 24x5kW Windows Emulator",
+	"ShortName" : "TTS Sw 24x5 WNDEM",
+	"ESTAString": "0x29E8",
+	"OEMString"	: "0x00ff",
+    "Controller": false,
+    "DHCP"      : true,
+    
+    "UBEA"		: false,
+    "UBEAVer"   : 2,
+	"RDM"		: false,
+	"BootROM"   : false,
+	"PortAddr"  : "front",
+	"Indicator" : "normal",
+
+    "Users"     : ["UserA","UserB"],
+    "Groups"    : ["GroupA"]
+}

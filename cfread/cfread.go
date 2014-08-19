@@ -4,6 +4,7 @@ import (
 	"../cmdinterface"
 	"encoding/json"
 	"fmt"
+	"net"
 	"os"
 )
 
@@ -58,7 +59,26 @@ func ParseConfig(fname string) CFReader {
 		err = decoder.Decode(&cfr)
 		if err != nil {
 			fmt.Println("error:", err.Error())
+			return cfr
 		}
 	}
+
+	if cfr.Interface == "auto" {
+		ints, err := net.Interfaces()
+		if err != nil {
+			fmt.Printf("Error get interfaces: %s", err.Error())
+			return cfr
+		}
+		for n, intf := range ints {
+			fmt.Printf("Int: %s", intf)
+			if (intf.Flags & net.FlagUp) != 0 {
+				fmt.Printf("Configured auto interface : %s", n, intf.Name)
+				cfr.Interface = intf.Name
+				fmt.Printf("[123]")
+				break
+			}
+		}
+	}
+
 	return cfr
 }

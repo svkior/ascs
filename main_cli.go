@@ -67,6 +67,8 @@ func runApp() {
 		an.Connect()
 	} else {
 		conf.ChLog.Log(fmt.Sprintf("Error setup ArtNet: %s", err.Error()))
+		conf.ChLog.Log("Pause for 1 second...")
+		time.Sleep(1 * time.Second)
 	}
 }
 

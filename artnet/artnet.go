@@ -69,6 +69,14 @@ func (s *Status1) GetStatus1() byte {
 	return rv
 }
 
+func (s *Status1) SetStatus(b byte) {
+	s.UBEA = (b & 1) != 0
+	s.RDM = (b & 2) != 0
+	s.BootROM = (b & 4) != 0
+	s.PortAddr = (b & (8 + 16)) >> 4
+	s.Indicator = (b & (32 + 64)) >> 6
+}
+
 type Status2 struct {
 	hasWeb      bool
 	ipDhcp      bool
@@ -116,6 +124,26 @@ type Artnet struct {
 	PoolCounter uint16
 	StatusCode  uint16
 	StatusMsg   string
+	discovered  []Artnet
+	disLen      int
+}
+
+// Определяет по IP адресу устройство
+// Если нет  такого - то создает новое
+func (a *Artnet) DiscoverNodeByIP(ip net.IP) *Artnet {
+	var dNode *Artnet
+	for i := 0; i < a.disLen; i++ {
+		dNode = &a.discovered[i]
+		if dNode.localIp.String() == ip.String() {
+			return dNode
+		}
+	}
+	return nil
+}
+
+func (a *Artnet) AddNewNode(n *Artnet) {
+	a.discovered = append(a.discovered, n)
+	a.disLen = len(a.discovered)
 }
 
 func (a *Artnet) SetStatus(stat string) {
@@ -190,7 +218,31 @@ func (a *Artnet) Setup(conf *cfread.CFReader) error {
 
 	for _, addr := range iAddrs {
 		ip, ipNet, err := net.ParseCIDR(addr.String())
-		if err == nil {
+
+		if err != nil {
+			a.Logf("IP from win: %s ", addr.String())
+			ip := net.ParseIP(addr.String())
+			if ip == nil {
+				return errors.New(fmt.Sprintf("Invalid address %s", addr.String()))
+			}
+			mask := ip.DefaultMask()
+			network := ip.Mask(mask)
+			a.localIp = ip
+			a.broadcast = net.IPv4(
+				network[0]|^mask[0],
+				network[1]|^mask[1],
+				network[2]|^mask[2],
+				network[3]|^mask[3],
+			)
+			a.Logf("Addr :     %s", ip.String())
+			a.Logf("Network :  %s", network.String())
+			a.Logf("Mask:      %s", mask.String())
+			a.Logf("Broadcast: %s", a.broadcast.String())
+
+			break
+		} else {
+			a.Logf("DEBUG Addr :     %s", ip.String())
+
 			if ip.To4() != nil {
 				mask := ipNet.Mask
 				network := ip.Mask(mask)
@@ -205,38 +257,39 @@ func (a *Artnet) Setup(conf *cfread.CFReader) error {
 				a.Logf("Network :  %s", network.String())
 				a.Logf("Mask:      %s", mask.String())
 				a.Logf("Broadcast: %s", a.broadcast.String())
-
-				oem, err := strconv.ParseUint(a.conf.OEMString, 0, 16)
-				if err != nil {
-					return err
-				}
-				a.OEM = uint16(oem)
-				a.Logf("OEM Number: %d", a.OEM)
-
-				esta, err := strconv.ParseUint(a.conf.ESTAString, 0, 16)
-				if err != nil {
-					return err
-				}
-				a.ESTA = uint16(esta)
-				a.Logf("ESTA Number: %d", a.ESTA)
-
-				a.Stat1 = CreateStatus1()
-				a.Stat1.UBEA = a.conf.UBEA
-				a.Stat1.RDM = a.conf.RDM
-				a.Stat1.BootROM = a.conf.BootROM
-				a.Stat1.SetPortAddr(a.conf.PortAddr)
-				a.Stat1.SetIndicator(a.conf.Indicator)
-
-				a.Stat2 = CreateStatus2()
-				a.Stat2.DHCP(a.conf.DHCP)
-
-				a.SetStatus("RcPowerOk")
-				a.StatusMsg = "Everything is OK"
-
-				return nil
+				break
 			}
 		}
 	}
+
+	oem, err := strconv.ParseUint(a.conf.OEMString, 0, 16)
+	if err != nil {
+		return err
+	}
+	a.OEM = uint16(oem)
+	a.Logf("OEM Number: %d", a.OEM)
+
+	esta, err := strconv.ParseUint(a.conf.ESTAString, 0, 16)
+	if err != nil {
+		return err
+	}
+	a.ESTA = uint16(esta)
+	a.Logf("ESTA Number: %d", a.ESTA)
+
+	a.Stat1 = CreateStatus1()
+	a.Stat1.UBEA = a.conf.UBEA
+	a.Stat1.RDM = a.conf.RDM
+	a.Stat1.BootROM = a.conf.BootROM
+	a.Stat1.SetPortAddr(a.conf.PortAddr)
+	a.Stat1.SetIndicator(a.conf.Indicator)
+
+	a.Stat2 = CreateStatus2()
+	a.Stat2.DHCP(a.conf.DHCP)
+
+	a.SetStatus("RcPowerOk")
+	a.StatusMsg = "Everything is OK"
+
+	return nil
 
 	return errors.New("Can`t find IPv4 Address")
 }
@@ -294,6 +347,43 @@ func (a *Artnet) ParsePacket(buf [1024]byte, addr *net.UDPAddr, n int) {
 		a.SendArtPollReply(addr)
 	case 0x2100:
 		a.Log("ArtPoolReply: NOT REALIZED")
+
+		ipAddr := net.IPv4(
+			buf[10],
+			buf[11],
+			buf[12],
+			buf[13],
+		)
+
+		an := a.DiscoverNodeByIP(ipAddr)
+		if an == nil {
+			a.Logf("ArtPoolReply: Node %s is not present adding", ipAddr.String())
+			art := Artnet{}
+			art.localIp = ipAddr
+			art.macAddr = net.HardwareAddr{buf[201], buf[202], buf[203], buf[204], buf[205], buf[206]}
+			art.OEM = uint16(buf[20])<<8 | uint16(buf[21])
+			art.ESTA = uint16(buf[25])<<8 | uint16(buf[24])
+			art.conf = &cfread.CFReader{}
+			art.conf.UBEAVer = buf[22]
+			art.Stat1.SetStatus(buf[23])
+
+			/*
+				Stat1       Status1
+				Stat2       Status2
+				conf        *cfread.CFReader
+				conn        *net.UDPConn
+				PoolCounter uint16
+				StatusCode  uint16
+				StatusMsg   string
+
+
+				buf[23] = a.Stat1.GetStatus1()    // Status1
+			*/
+			a.AddNewNode(art)
+		} else {
+			a.Logf("ArtPoolReply: Node %s is present updating", ipAddr.String())
+		}
+
 	case 0x2300:
 		a.Log("OpDiagData: NOT REALIZED")
 	case 0x2400:
@@ -451,20 +541,21 @@ func (a *Artnet) SendArtPollReply(addr *net.UDPAddr) {
 	// idAddress := a.localIP
 	// port
 
-	buf[0] = byte('A')                // A
-	buf[1] = byte('r')                // r
-	buf[2] = byte('t')                // t
-	buf[3] = byte('-')                // -
-	buf[4] = byte('N')                // N
-	buf[5] = byte('e')                // e
-	buf[6] = byte('t')                // t
-	buf[7] = 0                        // 0x00
-	buf[8] = getLow(OpCode)           // OpCode[0]
-	buf[9] = getHi(OpCode)            // OpCode[1]
-	buf[10] = a.localIp[0]            // IPV4 [0]
-	buf[11] = a.localIp[1]            // IPV4 [1]
-	buf[12] = a.localIp[2]            // IPV4 [2]
-	buf[13] = a.localIp[3]            // IPV4 [3]
+	buf[0] = byte('A')           // A
+	buf[1] = byte('r')           // r
+	buf[2] = byte('t')           // t
+	buf[3] = byte('-')           // -
+	buf[4] = byte('N')           // N
+	buf[5] = byte('e')           // e
+	buf[6] = byte('t')           // t
+	buf[7] = 0                   // 0x00
+	buf[8] = getLow(OpCode)      // OpCode[0]
+	buf[9] = getHi(OpCode)       // OpCode[1]
+	buf[10] = a.localIp.To4()[0] // IPV4 [0]
+	buf[11] = a.localIp.To4()[1] // IPV4 [1]
+	buf[12] = a.localIp.To4()[2] // IPV4 [2]
+	buf[13] = a.localIp.To4()[3] // IPV4 [3]
+
 	buf[14] = 0x36                    // IP Port Low
 	buf[15] = 0x19                    // IP Port Hi
 	buf[16] = getHi(a.conf.ProgVers)  // High byte of Version
@@ -537,11 +628,11 @@ func (a *Artnet) SendArtPollReply(addr *net.UDPAddr) {
 	buf[205] = a.macAddr[4] // MAC
 	buf[206] = a.macAddr[5] // MAC LO
 
-	buf[207] = a.localIp[0] // BIND IP 0
-	buf[208] = a.localIp[1] // BIND IP 1
-	buf[209] = a.localIp[2] // BIND IP 2
-	buf[210] = a.localIp[3] // BIND IP 3
-	buf[211] = 0            // BInd Index
+	buf[207] = a.localIp.To4()[0] // BIND IP 0
+	buf[208] = a.localIp.To4()[1] // BIND IP 1
+	buf[209] = a.localIp.To4()[2] // BIND IP 2
+	buf[210] = a.localIp.To4()[3] // BIND IP 3
+	buf[211] = 0                  // BInd Index
 
 	buf[212] = a.Stat2.GetStatus2() // Status2
 	// 212 + 26 = 238
