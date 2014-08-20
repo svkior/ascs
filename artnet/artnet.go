@@ -142,8 +142,9 @@ func (a *Artnet) DiscoverNodeByIP(ip net.IP) *Artnet {
 }
 
 func (a *Artnet) AddNewNode(n *Artnet) {
-	a.discovered = append(a.discovered, n)
+	a.discovered = append(a.discovered, *n)
 	a.disLen = len(a.discovered)
+
 }
 
 func (a *Artnet) SetStatus(stat string) {
@@ -379,7 +380,7 @@ func (a *Artnet) ParsePacket(buf [1024]byte, addr *net.UDPAddr, n int) {
 
 				buf[23] = a.Stat1.GetStatus1()    // Status1
 			*/
-			a.AddNewNode(art)
+			a.AddNewNode(&art)
 		} else {
 			a.Logf("ArtPoolReply: Node %s is present updating", ipAddr.String())
 		}
