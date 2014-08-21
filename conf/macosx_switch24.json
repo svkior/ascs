@@ -6,13 +6,20 @@
 	"OEMString"	: "0x00ff",
     "Controller": false,
     "DHCP"      : true,
-    
     "UBEA"		: false,
     "UBEAVer"   : 2,
 	"RDM"		: false,
 	"BootROM"   : false,
 	"PortAddr"  : "front",
 	"Indicator" : "normal",
+
+	"Channels"	: [
+		{
+			"Enabled" : true,
+			"Name"	  : "Art-Net"
+			
+		}
+	],
 
     "Users"     : ["UserA","UserB"],
     "Groups"    : ["GroupA"]

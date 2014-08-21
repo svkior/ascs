@@ -2,6 +2,7 @@ package cfread
 
 import (
 	"../cmdinterface"
+	"./chnls"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -16,6 +17,8 @@ type CFReader struct {
 	ESTAString string // Manufacturer code
 	// Status 2
 	DHCP bool // true if DHCP capable
+
+	Channels []chnls.Channel
 
 	// Status 1
 	UBEA      bool   // true if Present
