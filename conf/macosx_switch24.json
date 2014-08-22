@@ -12,6 +12,7 @@
 	"BootROM"   : false,
 	"PortAddr"  : "front",
 	"Indicator" : "normal",
+	"NoConsole" : true,
 
 	"Channels"	: [
 		{
