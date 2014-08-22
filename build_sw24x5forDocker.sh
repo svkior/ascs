@@ -6,6 +6,7 @@ cd ./distout/docker
 sudo docker build -t svkior/switcher24x7 .
 CID=$(sudo docker run -d svkior/switcher24x7)
 
+echo Deployed with CID $CID
 echo Press enter to quit
 read
 
