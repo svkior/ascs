@@ -60,7 +60,11 @@ func runApp() {
 	conf.Status()
 
 	go logger(conf.ChLog.Queue)
-	go cli()
+
+	if !conf.NoConsole {
+		go cli()
+	}
+
 	an := artnet.Artnet{}
 	err := an.Setup(&conf)
 	if err == nil {

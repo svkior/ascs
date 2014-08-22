@@ -10,6 +10,7 @@ import (
 )
 
 type CFReader struct {
+	NoConsole  bool   // if daemon mode
 	Interface  string // Interface for ArtNet
 	LongName   string // Long name of Device
 	ShortName  string // Short name of Device
