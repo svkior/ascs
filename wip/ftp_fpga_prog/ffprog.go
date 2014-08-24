@@ -9,6 +9,11 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"time"
+)
+
+const (
+	fwName = "firmware1.bit"
 )
 
 func TelnetWaitCommand(telBuf *bufio.Reader) {
@@ -23,33 +28,15 @@ func TelnetWaitCommand(telBuf *bufio.Reader) {
 	}
 }
 
-const (
-	fwName = "firmware1.bit"
-)
+func uploadFile(ftpAddr *string, fileName *string) {
 
-func main() {
-	fmt.Println("AT91SAM9+FPGA DevBoard, Fpga programmer")
-	ipPtr := flag.String("ip", "192.168.0.136", "DevBoard ip address")
-	bitPtr := flag.String("bit", "./top_arm.bit", "full path of bit file")
-	needPtr := flag.Bool("prog", false, "Download and program firmware")
-
-	flag.Parse()
-
-	files, err := filepath.Glob("*.bit")
+	var conn *ftp.ServerConn
+	var err error
+	//		log.Println("CONNECTION: ", conn)
+	log.Printf("Connecting to ftp://%s\n", *ftpAddr)
+	conn, err = ftp.Connect(*ftpAddr)
 	if err != nil {
-		log.Fatal(err.Error())
-	}
-
-	for _, file := range files {
-		log.Println("==:", file)
-	}
-
-	log.Fatal("Help")
-
-	log.Printf("Connecting to ftp://%s\n", *ipPtr)
-	conn, err := ftp.Connect(*ipPtr + ":21")
-	if err != nil {
-		log.Fatal("Error connecting to ", *ipPtr, " : ", err.Error())
+		log.Fatal("Error connecting to ", *ftpAddr, " : ", err.Error())
 	}
 	defer func() {
 		log.Println("FTP Disconnecting from remote host")
@@ -59,7 +46,7 @@ func main() {
 	log.Println("Logging as ftp:ftp")
 	err = conn.Login("root", "1")
 	if err != nil {
-		log.Fatal("Error connecting to ", *ipPtr, " : ", err.Error())
+		log.Fatal("Error connecting to ", *ftpAddr, " : ", err.Error())
 	}
 
 	log.Println("Remove old firmware")
@@ -69,7 +56,7 @@ func main() {
 	}
 
 	// open bit file
-	fi, err := os.Open(*bitPtr)
+	fi, err := os.Open(*fileName)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
@@ -81,29 +68,108 @@ func main() {
 	}()
 
 	r := bufio.NewReader(fi)
-	log.Printf("Putting firmware %s\n", *bitPtr)
+	log.Printf("Putting firmware %s\n", *fileName)
 	err = conn.Stor(fwName, r)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
+}
 
-	if *needPtr {
-		telNet, err := net.Dial("tcp", *ipPtr+":23")
+func main() {
+	fmt.Println("\n<== AT91SAM9+FPGA DevBoard, Fpga programmer V:0.001a ==>\n")
+	ipPtr := flag.String("ip", "192.168.0.136", "DevBoard ip address")
+	bitPtr := flag.String("bit", "./*.bit", "full path of bit file")
+	needPtr := flag.Bool("prog", false, "Download and program firmware")
+	repeatPtr := flag.Bool("repeat", false, "Wait for 5 second, rescan and flash if changed")
+
+	flag.Parse()
+
+	var counter int
+	var modTime time.Time
+	var lastName string
+	var telNet net.Conn
+	var telBuf *bufio.Reader
+
+	ftpAddr := *ipPtr + ":21"
+	telnetAddr := *ipPtr + ":23"
+
+	firstTime := true
+	modified := false
+
+	for {
+		modified = false
+		files, err := filepath.Glob(*bitPtr)
 		if err != nil {
 			log.Fatal(err.Error())
 		}
-		defer func() {
-			log.Println("Telnet Disconnecting from remote host")
-			telNet.Close()
-		}()
-		telBuf := bufio.NewReader(telNet)
 
-		TelnetWaitCommand(telBuf)
-		telNet.Write([]byte("sync\n"))
-		TelnetWaitCommand(telBuf)
-		telNet.Write([]byte("fpga_loader /root/firmware.bit\n"))
-		log.Println("Programming done")
-		TelnetWaitCommand(telBuf)
+		if len(files) < 1 {
+			log.Fatal("Could not find files matching: ", *bitPtr)
+		}
+
+		for _, file := range files {
+			//			log.Println("==:", file)
+			info, err := os.Stat(file)
+			if err != nil {
+				log.Fatal(err.Error())
+			}
+			if firstTime {
+				modTime = info.ModTime()
+				lastName = file
+				firstTime = false
+				modified = true
+
+			} else {
+				if info.ModTime().After(modTime) {
+					modTime = info.ModTime()
+					lastName = file
+					modified = true
+				}
+			}
+			//log.Println("File: ", file, " Mod time: ", info.ModTime())
+		}
+
+		// Если нашли новый файл
+		if modified {
+			log.Println("Selecting file: ", lastName)
+
+			uploadFile(&ftpAddr, &lastName)
+
+			if *needPtr {
+
+				log.Println(telNet)
+				if true {
+					log.Println("Connecting to telnet ", telnetAddr)
+					telNet, err = net.Dial("tcp", telnetAddr)
+					if err != nil {
+						log.Fatal(err.Error())
+					}
+					defer func() {
+						log.Println("Telnet Disconnecting from remote host")
+						telNet.Close()
+					}()
+					telBuf = bufio.NewReader(telNet)
+				} else {
+					telNet.Write([]byte("\n"))
+				}
+				TelnetWaitCommand(telBuf)
+				telNet.Write([]byte("sync\n"))
+				TelnetWaitCommand(telBuf)
+				telNet.Write([]byte("fpga_loader /root/firmware.bit\n"))
+				log.Println("Programming done")
+				TelnetWaitCommand(telBuf)
+			}
+
+		}
+		if *repeatPtr == false {
+			log.Println("Exiting...")
+			break
+		} else {
+			counter += 1
+			//log.Printf("<%04d> Sleeping for 5 seconds...\n", counter)
+			time.Sleep(5 * time.Second)
+			//log.Println("Wake Up!")
+		}
+
 	}
-
 }
