@@ -1,5 +1,5 @@
 {
-	"Interface" : "en0",
+	"Interface" : "vnic0",
 	"LongName"  : "TTS Switcher 24x5kW Mac OS X Emulator",
 	"ShortName" : "TTS Sw 24x5 OSXE ",
 	"ESTAString": "0x29E8",
