@@ -28,7 +28,7 @@ func TelnetWaitCommand(telBuf *bufio.Reader) {
 	}
 }
 
-func uploadFile(ftpAddr *string, fileName *string) {
+func uploadFile(ftpAddr *string, fileName *string, destName *string) {
 
 	var conn *ftp.ServerConn
 	var err error
@@ -69,7 +69,7 @@ func uploadFile(ftpAddr *string, fileName *string) {
 
 	r := bufio.NewReader(fi)
 	log.Printf("Putting firmware %s\n", *fileName)
-	err = conn.Stor(fwName, r)
+	err = conn.Stor(*destName, r)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
@@ -81,6 +81,7 @@ func main() {
 	bitPtr := flag.String("bit", "./*.bit", "full path of bit file")
 	needPtr := flag.Bool("prog", false, "Download and program firmware")
 	repeatPtr := flag.Bool("repeat", false, "Wait for 5 second, rescan and flash if changed")
+	destPtr := flag.String("dest", "/root/firmware1.bit", "Specify destination for file name")
 
 	flag.Parse()
 
@@ -133,7 +134,7 @@ func main() {
 		if modified {
 			log.Println("Selecting file: ", lastName)
 
-			uploadFile(&ftpAddr, &lastName)
+			uploadFile(&ftpAddr, &lastName, destPtr)
 
 			if *needPtr {
 
