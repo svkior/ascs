@@ -12,10 +12,6 @@ import (
 	"time"
 )
 
-const (
-	fwName = "firmware1.bit"
-)
-
 func TelnetWaitCommand(telBuf *bufio.Reader) {
 	for {
 		symbol, err := telBuf.ReadByte()
@@ -50,7 +46,7 @@ func uploadFile(ftpAddr *string, fileName *string, destName *string) {
 	}
 
 	log.Println("Remove old firmware")
-	err = conn.Delete(fwName)
+	err = conn.Delete(*destName)
 	if err != nil {
 		log.Println("Error delete file: ", err.Error())
 	}
