@@ -152,7 +152,7 @@ func main() {
 				TelnetWaitCommand(telBuf)
 				telNet.Write([]byte("sync\n"))
 				TelnetWaitCommand(telBuf)
-				telNet.Write([]byte("fpga_loader /root/firmware.bit\n"))
+				telNet.Write([]byte("fpga_loader " + *destPtr + "\n"))
 				log.Println("Programming done")
 				TelnetWaitCommand(telBuf)
 			}
