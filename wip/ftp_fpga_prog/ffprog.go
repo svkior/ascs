@@ -12,6 +12,8 @@ import (
 	"time"
 )
 
+var version string
+
 func TelnetWaitCommand(telBuf *bufio.Reader) {
 	for {
 		symbol, err := telBuf.ReadByte()
@@ -72,12 +74,13 @@ func uploadFile(ftpAddr *string, fileName *string, destName *string) {
 }
 
 func main() {
-	fmt.Println("\n<== AT91SAM9+FPGA DevBoard, Fpga programmer V:0.001a ==>\n")
+	fmt.Println("\n<== AT91SAM9+FPGA DevBoard, Fpga programmer V:", version, " ==>\n")
 	ipPtr := flag.String("ip", "192.168.0.136", "DevBoard ip address")
 	bitPtr := flag.String("bit", "./*.bit", "full path of bit file")
 	needPtr := flag.Bool("prog", false, "Download and program firmware")
 	repeatPtr := flag.Bool("repeat", false, "Wait for 5 second, rescan and flash if changed")
 	destPtr := flag.String("dest", "/root/firmware1.bit", "Specify destination for file name")
+	reprogPtr := flag.Int("reprog", 0, "time in seconds to auto reprog")
 
 	flag.Parse()
 
@@ -87,6 +90,8 @@ func main() {
 	var telNet net.Conn
 	var telBuf *bufio.Reader
 
+	var reprogCounter int
+
 	ftpAddr := *ipPtr + ":21"
 	telnetAddr := *ipPtr + ":23"
 
@@ -94,7 +99,6 @@ func main() {
 	modified := false
 
 	for {
-		modified = false
 		files, err := filepath.Glob(*bitPtr)
 		if err != nil {
 			log.Fatal(err.Error())
@@ -128,6 +132,7 @@ func main() {
 
 		// Если нашли новый файл
 		if modified {
+			modified = false
 			log.Println("Selecting file: ", lastName)
 
 			uploadFile(&ftpAddr, &lastName, destPtr)
@@ -164,8 +169,16 @@ func main() {
 		} else {
 			counter += 1
 			//log.Printf("<%04d> Sleeping for 5 seconds...\n", counter)
-			time.Sleep(5 * time.Second)
+			time.Sleep(1 * time.Second)
 			//log.Println("Wake Up!")
+			if *reprogPtr > 0 {
+				if reprogCounter == 0 {
+					reprogCounter = *reprogPtr
+					modified = true
+				} else {
+					reprogCounter -= 1
+				}
+			}
 		}
 
 	}
