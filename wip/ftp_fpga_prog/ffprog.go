@@ -116,7 +116,7 @@ func configuringProgam() {
 		version = "DEVELOPMENT"
 	}
 
-	fmt.Println("\n<== AT91SAM9+FPGA DevBoard, Fpga programmer V:", version, " ==>\n")
+	fmt.Println("AT91SAM9+FPGA DevBoard, Fpga programmer Version: ", version)
 
 	// Если попросили версию, то после этого выходим
 	if *printVersion {
