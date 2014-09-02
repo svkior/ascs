@@ -28,3 +28,9 @@ GOARCH=386 GOOS=windows go build -ldflags "-X main.version \"$VERSION\"" -o ./di
 
 echo building windows_amd64
 GOARCH=amd64 GOOS=windows go build -ldflags "-X main.version \"$VERSION\"" -o ./distout/ffprog64$OUT_FILE_SUFFIX.exe ffprog.go
+
+git add .
+git commit -am "Add new build: `./_version`"
+git pull
+git push
+
