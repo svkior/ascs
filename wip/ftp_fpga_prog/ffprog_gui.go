@@ -1,20 +1,29 @@
 package main
 
 import (
-	"fmt"
-	"gopkg.in/qml.v0"
+	"github.com/andlabs/ui"
+	//"image"
+	//"reflect"
 )
 
-func main() {
-	qml.Init(nil)
-	eng := qml.NewEngine()
-	comp, err := eng.LoadFile("./main.qml")
-	if err != nil {
-		fmt.Printf("Error load file: %s", err.Error())
-		return
-	}
+var w ui.Window
 
-	win := comp.CreateWindow(nil)
-	win.Show()
-	win.Wait()
+func initGUI() {
+	b := ui.NewButton("Button")
+	stack := ui.NewVerticalStack(b)
+	w = ui.NewWindow("Window", 400, 500, stack)
+	w.OnClosing(func() bool {
+		ui.Stop()
+		return true
+	})
+	w.Show()
+
+}
+
+func main() {
+	go ui.Do(initGUI)
+	err := ui.Go()
+	if err != nil {
+		panic(err)
+	}
 }
