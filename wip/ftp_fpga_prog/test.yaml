@@ -1,0 +1,6 @@
+destip: 192.168.2.7
+bitfile: ./*.bit
+needprog: false
+needrepeat: false
+destfile: /root/firmware1.bit
+reprog: 0

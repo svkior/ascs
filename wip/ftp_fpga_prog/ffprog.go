@@ -87,12 +87,12 @@ const (
 )
 
 type Config struct {
-	destIp     string // IP адрес устройства
-	bitFile    string // паттерн, который нужно зашивать
-	needProg   bool
-	needRepeat bool
-	destFile   string
-	reprog     int
+	DestIp     string // IP адрес устройства
+	BitFile    string // паттерн, который нужно зашивать
+	NeedProg   bool   // Нужно ли выполнять команду TODO: Сделать параметр с названием команды, которую нужно выполнить
+	NeedRepeat bool   // Нужно ли сканировать директорию на предмет новых файлов. TODO: нужно задавать время
+	DestFile   string // файл, который нужно сохранять
+	Reprog     int    // Время в секундах для автоматической перезаливки программы
 }
 
 var config Config
@@ -100,9 +100,11 @@ var config Config
 func configuringProgam() {
 
 	printVersion := flag.Bool("v", false, "Print version and exit")
-	debugPtr := flag.String("debug", "", "Working use cases are:\n  * -debug=config  : Prints current config and exit normally")
-	configPtr := flag.String("conf", "", "JSON config file name")
-	yamlPtr := flag.String("yaml", "", "YAML config file name")
+	writeYamlPtr := flag.String("wyaml", "", "Write config in YAML format and exit")
+	writeJsonPtr := flag.String("wjson", "", "Write config in JSON format and exit")
+	debugPtr := flag.String("debug", "", "Working use cases are:\n     -debug=config  : Prints current config and exit normally")
+	configPtr := flag.String("json", "", "Read config from JSON config file")
+	yamlPtr := flag.String("yaml", "", "Read config from YAML config file")
 	ipPtr := flag.String("ip", IP_DEFAULT, "DevBoard ip address")
 	bitPtr := flag.String("bit", BIT_DEFAULT, "full path of bit file")
 	needPtr := flag.Bool("prog", NEED_DEFAULT, "Download and program firmware")
@@ -123,12 +125,12 @@ func configuringProgam() {
 		os.Exit(0)
 	}
 
-	config.destIp = IP_DEFAULT
-	config.bitFile = BIT_DEFAULT
-	config.needProg = NEED_DEFAULT
-	config.needRepeat = REPEAT_DEFAULT
-	config.destFile = DEST_DEFAULT
-	config.reprog = REPROG_DEFAULT
+	config.DestIp = IP_DEFAULT
+	config.BitFile = BIT_DEFAULT
+	config.NeedProg = NEED_DEFAULT
+	config.NeedRepeat = REPEAT_DEFAULT
+	config.DestFile = DEST_DEFAULT
+	config.Reprog = REPROG_DEFAULT
 
 	if (len(*configPtr) > 0) && (len(*yamlPtr) > 0) {
 		fmt.Println("Макс, не дури. Используй только один тип конфигов")
@@ -136,16 +138,19 @@ func configuringProgam() {
 	}
 
 	if len(*configPtr) > 0 {
-		cfile, err := os.Open(*configPtr)
+
+		//log.Println("Reading config from file ", *configPtr)
+
+		jdata, err := ioutil.ReadFile(*configPtr)
 		if err != nil {
 			fmt.Printf("Error opening config file : %s", err.Error())
 			os.Exit(1)
 		}
-		defer cfile.Close()
-		decoder := json.NewDecoder(cfile)
-		err = decoder.Decode(&config)
+
+		err = json.Unmarshal(jdata, &config)
+
 		if err != nil {
-			fmt.Println("error reading config file: ", err.Error())
+			fmt.Println("error decoding config file: ", err.Error())
 			os.Exit(2)
 		}
 	}
@@ -167,40 +172,82 @@ func configuringProgam() {
 	// Сверху накладываем дополнительные ключи в командной строке
 
 	if *ipPtr != IP_DEFAULT {
-		config.destIp = *ipPtr
+		config.DestIp = *ipPtr
 	}
 	if *bitPtr != BIT_DEFAULT {
-		config.bitFile = *bitPtr
+		config.BitFile = *bitPtr
 	}
 	if *needPtr != NEED_DEFAULT {
-		config.needProg = *needPtr
+		config.NeedProg = *needPtr
 	}
 	if *repeatPtr != REPEAT_DEFAULT {
-		config.needRepeat = *repeatPtr
+		config.NeedRepeat = *repeatPtr
 	}
 	if *destPtr != DEST_DEFAULT {
-		config.destFile = *destPtr
+		config.DestFile = *destPtr
 	}
 	if *reprogPtr != REPROG_DEFAULT {
-		config.reprog = *reprogPtr
+		config.Reprog = *reprogPtr
+	}
+
+	// Записываем конфиги обратно на диск
+	var needExit bool
+
+	if len(*writeYamlPtr) > 0 {
+		log.Println("Writing YAML config to: ", *writeYamlPtr)
+		encodedY, err := yaml.Marshal(&config)
+		if err != nil {
+			fmt.Println("Error encoding YAML: ", err.Error())
+			os.Exit(6)
+		}
+
+		err = ioutil.WriteFile(*writeYamlPtr, encodedY, 0644)
+		if err != nil {
+			fmt.Println("Error writing YAML: ", err.Error())
+			os.Exit(7)
+		}
+
+		needExit = true
+	}
+
+	if len(*writeJsonPtr) > 0 {
+		log.Println("Writing JSPN config to: ", *writeJsonPtr)
+		b, err := json.Marshal(config)
+		if err != nil {
+			fmt.Println("Error encoding JSON: ", err.Error())
+			os.Exit(8)
+		}
+
+		err = ioutil.WriteFile(*writeJsonPtr, b, 0644)
+		if err != nil {
+			fmt.Println("Error writing JSON: ", err.Error())
+		}
+
+		needExit = true
+
 	}
 
 	if len(*debugPtr) > 0 {
 		switch *debugPtr {
 		case "config":
-			fmt.Println("Default config:")
-			fmt.Println("\tdestIp     = ", config.destIp)
-			fmt.Println("\tbitFile    = ", config.bitFile)
-			fmt.Println("\tneedProg   = ", config.needProg)
-			fmt.Println("\tneedRepeat = ", config.needRepeat)
-			fmt.Println("\tdestFile   = ", config.destFile)
-			fmt.Println("\treprog     = ", config.reprog)
+			fmt.Println("Program config:")
+			fmt.Println("\tDestIp     = ", config.DestIp)
+			fmt.Println("\tBitFile    = ", config.BitFile)
+			fmt.Println("\tNeedProg   = ", config.NeedProg)
+			fmt.Println("\tNeedRepeat = ", config.NeedRepeat)
+			fmt.Println("\tDestFile   = ", config.DestFile)
+			fmt.Println("\tReprog     = ", config.Reprog)
 			os.Exit(0)
 		default:
 			fmt.Println("Unknown option for -debug flag: ", *debugPtr)
 			os.Exit(4)
 		}
 	}
+
+	if needExit {
+		os.Exit(0)
+	}
+
 }
 
 func main() {
@@ -215,20 +262,20 @@ func main() {
 
 	configuringProgam()
 
-	ftpAddr := config.destIp + ":21"
-	telnetAddr := config.destIp + ":23"
+	ftpAddr := config.DestIp + ":21"
+	telnetAddr := config.DestIp + ":23"
 
 	firstTime := true
 	modified := false
 
 	for {
-		files, err := filepath.Glob(config.bitFile)
+		files, err := filepath.Glob(config.BitFile)
 		if err != nil {
 			log.Fatal(err.Error())
 		}
 
 		if len(files) < 1 {
-			log.Fatal("Could not find files matching: ", config.bitFile)
+			log.Fatal("Could not find files matching: ", config.BitFile)
 		}
 
 		for _, file := range files {
@@ -258,9 +305,9 @@ func main() {
 			modified = false
 			log.Println("Selecting file: ", lastName)
 
-			uploadFile(&ftpAddr, &lastName, &config.destFile)
+			uploadFile(&ftpAddr, &lastName, &config.DestFile)
 
-			if config.needRepeat {
+			if config.NeedRepeat {
 
 				log.Println(telNet)
 				if true {
@@ -280,13 +327,13 @@ func main() {
 				TelnetWaitCommand(telBuf)
 				telNet.Write([]byte("sync\n"))
 				TelnetWaitCommand(telBuf)
-				telNet.Write([]byte("fpga_loader " + config.destFile + "\n"))
+				telNet.Write([]byte("fpga_loader " + config.DestFile + "\n"))
 				log.Println("Programming done")
 				TelnetWaitCommand(telBuf)
 			}
 
 		}
-		if config.needRepeat == false {
+		if config.NeedRepeat == false {
 			log.Println("Exiting...")
 			break
 		} else {
@@ -294,9 +341,9 @@ func main() {
 			//log.Printf("<%04d> Sleeping for 5 seconds...\n", counter)
 			time.Sleep(1 * time.Second)
 			//log.Println("Wake Up!")
-			if config.reprog > 0 {
+			if config.Reprog > 0 {
 				if reprogCounter == 0 {
-					reprogCounter = config.reprog
+					reprogCounter = config.Reprog
 					modified = true
 				} else {
 					reprogCounter -= 1
