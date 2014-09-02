@@ -66,6 +66,7 @@ func uploadFile(ftpAddr *string, fileName *string, destName *string) {
 	}()
 
 	r := bufio.NewReader(fi)
+
 	log.Printf("Putting firmware %s\n", *fileName)
 	err = conn.Stor(*destName, r)
 	if err != nil {
