@@ -307,7 +307,7 @@ func main() {
 
 			uploadFile(&ftpAddr, &lastName, &config.DestFile)
 
-			if config.NeedRepeat {
+			if config.NeedProg {
 
 				log.Println(telNet)
 				if true {
