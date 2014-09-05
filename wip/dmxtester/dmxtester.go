@@ -6,6 +6,6 @@ import (
 
 var version string
 
-func func main() {
+func main() {
 	fmt.Printf("Hello, World from %s\n", version)
 }
