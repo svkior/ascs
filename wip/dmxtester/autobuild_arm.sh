@@ -14,23 +14,8 @@ echo FileName: $OUT_FILE_SUFFIX
 
 rm -rf $DISTOUT
 mkdir -p $DISTOUT
-echo building MAC64 
-go build -ldflags "-X main.version \"$VERSION\"" -o ./distout/ffprog_mac64$OUT_FILE_SUFFIX ffprog.go
 
-echo building linux_386
-GOARCH=386 GOOS=linux go build -ldflags "-X main.version \"$VERSION\"" -o ./distout/ffprog_lnx32$OUT_FILE_SUFFIX ffprog.go
+echo building linux_arm
+GOARCH=arm GOARM=5 GOOS=linux go build -ldflags "-X main.version \"$VERSION\"" -o ./distout/dmxtester$OUT_FILE_SUFFIX dmxtester.go
 
-echo building linux_amd64
-GOARCH=amd64 GOOS=linux go build -ldflags "-X main.version \"$VERSION\"" -o ./distout/ffprog_lnx64$OUT_FILE_SUFFIX ffprog.go
-
-echo building windows32
-GOARCH=386 GOOS=windows go build -ldflags "-X main.version \"$VERSION\"" -o ./distout/ffprog$OUT_FILE_SUFFIX.exe ffprog.go
-
-echo building windows_amd64
-GOARCH=amd64 GOOS=windows go build -ldflags "-X main.version \"$VERSION\"" -o ./distout/ffprog64$OUT_FILE_SUFFIX.exe ffprog.go
-
-git add .
-git commit -am "Add new build: `./_version`"
-git pull
-git push
-
+ffprog -json ./build_5.json

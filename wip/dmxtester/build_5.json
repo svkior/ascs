@@ -1,0 +1,8 @@
+{
+	"DestIp":"192.168.2.5",
+	"BitFile":"./distout/dmxtester*",
+	"NeedProg":false,
+	"NeedRepeat":false,
+	"DestFile":"/root/dmxtester",
+	"Reprog":0
+}
