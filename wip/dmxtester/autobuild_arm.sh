@@ -16,6 +16,7 @@ rm -rf $DISTOUT
 mkdir -p $DISTOUT
 
 echo building linux_arm
-GOARCH=arm GOARM=5 GOOS=linux go build -ldflags "-X main.version \"$VERSION\"" -o ./distout/dmxtester$OUT_FILE_SUFFIX dmxtester.go
+GOARCH=arm GOARM=5 GOOS=linux go build -o ./distout/dmxtester$OUT_FILE_SUFFIX dmxtester.go
+#GOARCH=arm GOARM=5 GOOS=linux go build -ldflags "-X main.version \"$VERSION\"" -o ./distout/dmxtester$OUT_FILE_SUFFIX dmxtester.go
 
 ffprog -json ./build_5.json
