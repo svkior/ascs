@@ -1,5 +1,5 @@
 {
-	"Interface" : "vnic0",
+	"Interface" : "en0",
 	"LongName"  : "TTS Switcher 24x5kW Mac OS X Emulator",
 	"ShortName" : "TTS Sw 24x5 OSXE ",
 	"ESTAString": "0x29E8",
@@ -17,7 +17,7 @@
 	"Channels"	: [
 		{
 			"Enabled" : true,
-			"Name"	  : "Art-Net"
+			"Name"	  : "Art-Net0"
 			
 		}
 	],
